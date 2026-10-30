@@ -1,0 +1,34 @@
+d1
+because after tsc turns .ts into .js, the interfaces are gone. Decorators attach metadata to real runtime objects - and only classes are real at runtime. 
+d2
+it gets input object and strips everything that is not in DTO. It is security feature because entity shouldn't be shared with frontend
+with forbidNonWhitelisted: true it rejects with 400.
+d3
+forbidNonWhitelisted: true make so if there are more properties than in dto it throws 400 error
+d4
+error is thrown in service because  service is layer for business logic and decides whats not found.
+d5
+201 - resource created,delete gives back 200 by default and 204 - no content if we @HttpCode(204)
+d6
+according to spec there should be  optional body property and hence there should be @IsOptional() decorator
+ibecause of what is in useGlobalPipes in main.ts it strips and then throws 400 also because we pass body and not title  we get failed @IsString() with 400 error
+question 1: we created classes to add post dto and comment dto does trhat mean that interfaces and types in forum-types.ts aren't needed?
+question 2: we imported nest/mapped types for Partial type what is Partial type is it interface or some function that converts One class to another?what does it do under the hood?
+question 3: broad ts question: how to create and use custom decorators give simple examples
+question 4:what @Body() represents?also refresh what @Param() does as well.
+endpoint tests:
+A:req={ "title": "My new post", "body": "hello world", "categoryId": 2 } res={"id":4,"title":"My new post","body":"hello world","authorId":1,"categoryId":2},201
+B:req={ "body": "no title", "categoryId": 2 } res={"message":["title must be longer than or equal to 3 characters","title must be shorter than or equal to 200 characters","title must be a string"],"error":"Bad Request","statusCode":400},400
+C:req={ "title": "sneaky", "body": "x", "categoryId": 1, "authorId": 999 } res={"message":["property authorId should not exist","body must be longer than or equal to 3 characters"],"error":"Bad Request","statusCode":400},400
+D:req={ "title": "hi", "body": "x", "categoryId": "not a number" } res={"message":["title must be longer than or equal to 3 characters","body must be longer than or equal to 3 characters","categoryId must not be less than 1","categoryId must be an integer number"],"error":"Bad Request","statusCode":400},400
+E:req={ "title": "Edited title" } res={"id":1,"title":"Edited title","body":"first post","authorId":1,"categoryId":1},200
+F:req={ "title": "xxx" } res={"message":"Post 999 not found","error":"Not Found","statusCode":404},404
+G:DELETE /posts/2 works
+H:again res={"message":"Post -1 not found","error":"Not Found","statusCode":404},404
+check get posts res=[{"id":1,"title":"Edited title","body":"first post","authorId":1,"categoryId":1},{"id":3,"title":"React question","body":"useEffect?","authorId":2,"categoryId":2},{"id":4,"title":"My new post","body":"hello world","authorId":1,"categoryId":2}],200
+Break things on purpose
+1 removed @IsString() sent { "title": 123, "body": "x", "categoryId": 1 } res={"message":["title must be longer than or equal to 3 characters","title must be shorter than or equal to 200 characters","body must be longer than or equal to 3 characters"],"error":"Bad Request","statusCode":400},400
+2 Remove whitelist + forbidNonWhitelisted. sent { "title": "sneaky", "body": "xxx", "categoryId": 1, "authorId": 999 } res={"id":4,"title":"sneaky","body":"xxx","authorId":1,"categoryId":1},201
+3 Remove @HttpCode(204) from remove delete post/2 empty body,200
+4 Change @IsInt() on categoryId to @IsNumber(). Send { "categoryId": 1.5 }. res={"message":"Unexpected non-whitespace character after JSON at position 21 (line 1 column 22)","error":"Bad Request","statusCode":400}
+question 5: how to make so that i dont restart nest server any time i edit files manually is there lib for that?

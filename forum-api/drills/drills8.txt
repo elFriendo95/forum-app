@@ -1,0 +1,42 @@
+d1 because as perg http docs query params are strings thas why we need to convert it from string first.if we forget to do it and client sends ?page=2 2 is actually "2" string so validation throws error 400
+d2
+You have findAndCount. Why not find plus a separate count call? performance reason is that we do one operation instead of 2 functional reason is that its less code
+edit:
+Functional (correctness): both queries use the same where clause, so pagination math is always consistent. If you call find and count separately, you have to remember to pass the identical where twice. Forget one field, and total says 47 but the item pages only cover 30. findAndCount makes this class of bug structurally impossible.
+Performance (marginal): both queries run in one transaction with the same snapshot, so you can't have a race where find sees 20 items but count (run 5ms later) sees 19 because someone deleted a post in between. On a busy forum, this matters for "Page 1 of 47" rendering.
+d3
+if we delete user and onDelete: 'CASCADE' all comments get deleted too but if we restrict they will remain
+on reddit ive seen that if post get deleted it "remains" but with no possible way to further comment i think this approach is correct for forum as a person can still find useful info even if user is removed
+edit :cascade
+d4
+service finds no post so it should throw not found error and controller throws 404
+edit: service checks and if not exist throws 404 if we skip this check well get 500 on sql query step
+d5
+this.postsRepo.findAndCount({
+  posts, "desc", 10, {categoryId:2},
+});
+edit:
+this.postsRepo.findAndCount({
+  where: {
+    categoryId: 2,
+    title: Like('%nest%'),
+  },
+  order: { createdAt: 'DESC' },
+  skip: (2 - 1) * 10,
+  take: 10,
+});
+d6
+DELETE /comments/5 — comment 5 exists, belongs to user 3, caller is user 7. Order of checks, and status for each failure.
+controller>guard>checks token its valid but users dont match>throws 403>controller throws 403
+edit:Guard — reads Authorization, verifies token. If missing/invalid → 401 UnauthorizedException.>
+
+Controller — receives (id, user.sub), passes to service. No logic, no throw.>
+Service remove(id, userId):
+findOneBy({ id }) → if null → 404 NotFoundException>
+comment.authorId !== userId → 403 ForbiddenException>
+Nest's exception filter — translates to the response.
+d7  You change Post.author to load via relations: { author: true }. Without select: false on User.passwordHash, what exactly appears in GET /posts? Which principle should have prevented this?
+we get user info including hashedPassword to avoid this we make change in user entity like so @Column({ select: false }) hashedPassword
+
+d8
+because we need to check if post exists first and throw 404 if needed

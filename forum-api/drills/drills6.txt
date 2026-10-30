@@ -1,0 +1,44 @@
+d1
+entity is in db itself and repository is middleman object TypeORM creates
+edit: entity is class that TypeORm uses todescribe a table
+repository is query API for entity so that that i dont write SQL
+d2
+Posts have foreign key so that it "knows" what user is related We dont need it in user because we know that all present posts belong to said user
+edit: we need both @ManyToOne and @OneToMAny so that TypeOrm works properly
+d3
+because it can cause automatic deletion of columns that are not in TypeORM repository 
+edit:synchronize: true compares entity class agains db schema and applyes changes which is dangerouse if someone renames column for example
+d4
+const posts = this.postsRepo.get(); in case this is not correct walk me through solution because i dont understand what to do
+edit:
+return this.postsRepo.find({
+  relations: {
+    author: true,
+    category: true,
+  },
+});
+d5
+i think not because promise will arrive where it is needed regardless
+edit:because NestJS awaits any Promise returned from a controller method before serializing the response.
+d6
+if i delete User all their posts will be deleted as well. I think we can use onDelete in TypeOrmModule.forRoot({ to toggle if posts delete as well
+edit:@ManyToOne(() => User, { onDelete: 'CASCADE' })
+author: User;
+tests:
+1 GET /categories             > 200, [{"id":1,"name":"General","slug":"general"},{"id":2,"name":"NestJS","slug":"nestjs"},{"id":3,"name":"React","slug":"react"}]
+2 POST /posts req={ "title": "My new post", "body": "hello world", "categoryId": 2 } > 201,{"id":1,"title":"My new post","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:44:07.000Z","updatedAt":"2026-10-16T09:44:07.000Z"}
+3 GET /posts > 200,[{"id":1,"title":"My new post","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:44:07.000Z","updatedAt":"2026-10-16T09:44:07.000Z"}]
+4 GET /posts/1 >200,{"id":1,"title":"My new post","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:44:07.000Z","updatedAt":"2026-10-16T09:44:07.000Z"}
+5 PATCH /posts/1 { "title": "edited" } >200,{"id":1,"title":"edited","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:44:07.000Z","updatedAt":"2026-10-16T09:44:07.000Z"}
+6 DELETE /posts/1  >204
+7 GET /posts/1 >404,{"message":"Post 1 not found","error":"Not Found","statusCode":404}
+persistence test:
+created post { "title": "My new post", "body": "hello world", "categoryId": 2 }
+stopped and restarted server
+get posts works:[{"id":2,"title":"My new post","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:50:10.000Z","updatedAt":"2026-10-16T09:50:10.000Z"}]
+breaking tests:
+1 deleted forum.db>no posts but 3 categories [{"id":1,"name":"General","slug":"general"},{"id":2,"name":"NestJS","slug":"nestjs"},{"id":3,"name":"React","slug":"react"}]. There are categories because they are initialized in onModuleInit in categories service
+2 Change a column name in Post (e.g. title → name). Restart. What happened to the DB? Why does synchronize: true matter here?
+added post { "title": "My new post", "body": "hello world", "categoryId": 2 }, changed title to name in Post, result [{"id":1,"name":"My new post","body":"hello world","authorId":1,"categoryId":2,"createdAt":"2026-10-16T09:57:45.000Z","updatedAt":"2026-10-16T09:57:45.000Z"}] title updated to name without further changes. without synchronize true woud be {"statusCode":500,"message":"Internal server error"}
+3 Add @Column({ unique: true }) to Post.title. Create two posts with the same title. What error do you get? i get {"statusCode":500,"message":"Internal server error"}
+4 Comment out the seeding in CategoriesService.onModuleInit. Delete forum.db. Restart. GET /categories — what do you see? Why? i get emty categories array because there is no check for empty categories array now on module init

@@ -1,0 +1,34 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Build output ---
+dist/
+build/
+*.tsbuildinfo
+
+# --- Env files (NEVER commit real secrets) ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Database ---
+forum.db
+*.sqlite
+*.sqlite3
+
+# --- Logs ---
+logs/
+*.log
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Vite ---
+.vite/

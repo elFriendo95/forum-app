@@ -1,0 +1,14 @@
+d1
+controller handles validation ,parsing and sending/receiving data to service/component and service does other logic(like sorting) and query db. putting backend request directly or doing complex calculations with received data doesn't belong in controller
+d2
+example if session service has data on logged in user each controller can access it with dependance injection and not create it with new. This is more efficient and also reduces possibility of different controllers having different data
+d3
+@Controller('posts') indicates that current route is /posts and @Get(":id") indicates that current method is get. i assume that with this nest calls appropriate express method with appropriate parmeters
+d4
+1 easier code to read
+2 easier testing for errors as we dont need to change everything to fix mistake only certain controller or only certain service
+d5
+@Controller('posts') and @Get(":id")
+d6
+controller: sending and receiving posts,validating register input(for example making sure that email is properly formatted)
+service:filter posts,sort posts, ask backend for posts

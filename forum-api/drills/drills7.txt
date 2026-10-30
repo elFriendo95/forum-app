@@ -1,0 +1,48 @@
+Drill 1. Why is a session-based auth system harder to scale than JWT? What does JWT give up for that gain?
+answer: session is harder to scale because server stores { sessionId → userId } in memory or DB so some memory/time is spent on session retrieval JWT on other hand stores all data on client and server only checks if its valid. SO we trade memory/time for security
+edit:
+JWT trades revocation and tightness of control for statelessness and scale.
+Drill 2. A JWT's payload is base64-decoded. Does that mean it's encrypted? What should and should not go in the payload?
+no it doesn't mean its encrypted we shouldn't put hashed password in payload we should put role and userId into payload
+
+
+Drill 3. Explain what a salt does in password hashing, and why two users with the same password have different passwordHash values in the database.
+salt is some random bits put into password before hashing so single password can have multiple hashed
+edit:
+ a salt is unique per user, so even if 100 users all use password123, each one hashes to a different value. This defeats rainbow tables — precomputed lookup tables of hash('password123') → 'password123'. Without salts, an attacker who steals the DB can look up common passwords instantly. With salts, they'd have to brute-force each user individually.
+
+Drill 4. A client sends an expired JWT to POST /posts. Which status code and which exception class?
+401 Unauthorized 
+edit:UnauthorizedException > 401
+Drill 5. A client sends a valid token (user 7) to DELETE /posts/5, where post 5 belongs to user 3. Walk through the service logic: what gets checked, in what order, and what HTTP status is returned?
+we check if post exist first if no 404 then we check which user it is with JWT if secrets dont match then we 403 forbidden 
+edit:
+the guard's job isn't "protect the route" (that's a side effect). It's "populate req.user before the controller sees the request." Without it, you get a confusing 500, not a clean 401.
+Drill 6. Why does @CurrentUser() need JwtAuthGuard to have run first? What happens if you use @CurrentUser() without @UseGuards(JwtAuthGuard) on the same route?
+guard is needed so that uf user isn't logged in he cant access user dashboard for example if we go without @UseGuards(JwtAuthGuard) we can access this route regardless
+
+Drill 7. Two requests hit /auth/register at the same time with the same email. What can happen without a DB-level unique constraint, and what happens with one?
+without it there will be 2 same users with it 409 Conflict
+edit:
+Without the constraint: both requests pass the if (existing) pre-check (because the row isn't inserted yet in either transaction), then both INSERT successfully. You end up with two users with the same email. Data corruption.
+With the constraint: one INSERT succeeds, the other throws SQLITE_CONSTRAINT. Your try/catch translates it to 409 Conflict. The race is resolved at the DB level — the pre-check is best-effort, the constraint is the actual guarantee.
+Drill 8. You register a user, and the response is:
+
+json
+{ "token": "...", "user": { "id": 1, "email": "a@a.com", "passwordHash": "$2a$10$..." } }
+What is wrong and why is it serious?
+we sent back hashed password its security risk
+edit:
+passwordHash should never leave the users table. The only place it's allowed to exist is inside AuthService.login, where it's compared to the submitted password, and immediately discarded. It is not a field on "the user" from the client's perspective — it's an internal secret.
+question1: what are prerequisite sto use of decorators in function parameters like findOne(@Param(":id") id:string) broadly speaking?What are alternatives to this approach?
+question 2:why we sometimes both export and provide Some services in modules like in auth.module we have:  providers: [AuthService, JwtAuthGuard],
+  exports: [JwtModule, JwtAuthGuard],?
+question3: what is context as in execution context in decorator or context in guard?
+Tests:
+A POST /auth/register — { "username": "alice", "email": "alice@test.com", "password": "password123" }>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzkyNDAxMDUwLCJleHAiOjE3OTMwMDU4NTB9.-wtVnpfktkz8JGiIObFUF38AvM67wJvmRzbaRQeS1ng","user":{"username":"alice","email":"alice@test.com","id":1,"role":"user","createdAt":"2026-10-19T09:10:50.000Z"}},201
+B again > {"message":"Email already registered","error":"Conflict","statusCode":409},409
+C register bob { "username": "bob", "email": "bob@test.com", "password": "password456" }>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzkyNDAxMTc2LCJleHAiOjE3OTMwMDU5NzZ9.zHGBtdaiGKulfiv5NuRJfOcPEriI37kNmdLbR2so2gM","user":{"username":"bob","email":"bob@test.com","id":2,"role":"user","createdAt":"2026-10-19T09:12:56.000Z"}},201
+D Login alice (same creds) { "email": "alice@test.com", "password": "password123" }>{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNzkyNDAxODc4LCJleHAiOjE3OTMwMDY2Nzh9.rh-wIQ92P7j9l_w3wkFS6V6Y04-dSR_fPHDtbzNB324","user":{"id":1,"username":"alice","email":"alice@test.com","role":"user","createdAt":"2026-10-19T09:10:50.000Z"}},200
+E  Login alice with wrong password { "email": "alice@test.com", "password": "passaword123" }>{"message":"Invalid credentials","error":"Unauthorized","statusCode":401},401 unauthorized
+F Login ghost email { "email": "alaice@test.com", "password": "passaword123" }>{"message":"Invalid credentials","error":"Unauthorized","statusCode":401},401
+G GET /auth/me with alice token 
